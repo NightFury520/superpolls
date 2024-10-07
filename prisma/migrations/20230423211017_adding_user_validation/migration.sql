@@ -1,0 +1,3 @@
+ALTER TABLE "Poll"
+ADD COLUMN "isAuthenticated" BOOLEAN NOT NULL DEFAULT false;
+

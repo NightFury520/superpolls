@@ -1,0 +1,138 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex", "filteredRelationCount"]
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model User {
+  id                       String                    @id @default(cuid())
+  email                    String?                   @unique
+  emailVerified            DateTime?
+  image                    String?
+  name                     String?
+  stripeCustomerId         String?
+  stripeSubscriptionId     String?
+  stripeSubscriptionStatus StripeSubscriptionStatus?
+  accounts                 Account[]
+  sessions                 Session[]
+  poll                     Poll[]
+  vote                     Vote[]
+}
+
+model StripeEvent {
+  id               String   @id @unique
+  api_version      String?
+  data             Json
+  request          Json?
+  type             String
+  object           String
+  account          String?
+  created          DateTime
+  livemode         Boolean
+  pending_webhooks Int
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Poll {
+  id              String   @id @default(cuid())
+  title           String
+  userId          String?
+  createdAt       DateTime @default(now())
+  isLive          Boolean  @default(true)
+  isPublic        Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+  isAuthenticated Boolean  @default(false)
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  options         Option[]
+  Vote            Vote[]
+  Views           Views[]
+
+  @@index([userId])
+  @@index([id])
+}
+
+model Option {
+  id     String @id @default(cuid())
+  title  String
+  pollId String
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  Vote   Vote[]
+
+  @@index([pollId])
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  userId    String?
+  optionId  String
+  pollId    String
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  option    Option   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pollId])
+  @@index([optionId])
+  @@index([pollId])
+}
+
+model Views {
+  id        String   @id @default(cuid())
+  pollId    String
+  createdAt DateTime @default(now())
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@index([pollId])
+}
+
+enum StripeSubscriptionStatus {
+  incomplete
+  incomplete_expired
+  trialing
+  active
+  past_due
+  canceled
+  unpaid
+  paused
+}
